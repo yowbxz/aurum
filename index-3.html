@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURUM — Gold Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#C9A84C;--gold-l:#E8C97A;--gold-d:#8B6914;--gold-pale:rgba(201,168,76,.08);
+  --dark:#090804;--d2:#110F09;--d3:#181410;--d4:#201B12;--d5:#2A2418;
+  --text:#EDE0C4;--dim:#8A7B5C;--dim2:#574E3A;--dim3:#3A3328;
+  --up:#4EC882;--down:#E05555;--up-bg:rgba(78,200,130,.1);--down-bg:rgba(224,85,85,.1);
+  --border:rgba(201,168,76,.12);--border2:rgba(201,168,76,.07);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--dark);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;font-size:14px}
+
+/* Ambient glow */
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 10% 0%,rgba(201,168,76,.06) 0,transparent 50%),
+             radial-gradient(ellipse 60% 80% at 90% 100%,rgba(201,168,76,.04) 0,transparent 50%);
+  pointer-events:none;z-index:0}
+
+.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 80px;position:relative;z-index:1}
+
+/* ── HEADER ─────────────────────────────────────────── */
+header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:32px;padding-bottom:20px;
+  border-bottom:1px solid var(--border);
+}
+.logo{display:flex;flex-direction:column;gap:5px}
+.logo-mark{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:300;
+  letter-spacing:.35em;color:var(--gold);line-height:1}
+.logo-sub{font-size:.6rem;letter-spacing:.3em;color:var(--dim);text-transform:uppercase}
+.hdr-right{text-align:right;display:flex;flex-direction:column;gap:3px}
+.live-row{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:.62rem;color:var(--dim)}
+.live-dot{width:6px;height:6px;background:var(--up);border-radius:50%;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(78,200,130,.4)}50%{opacity:.7;box-shadow:0 0 0 4px rgba(78,200,130,0)}}
+#upd-time{font-size:.7rem;color:var(--gold-l);letter-spacing:.05em}
+#upd-st{font-size:.58rem;color:var(--dim2)}
+
+/* ── PRICE HERO ─────────────────────────────────────── */
+.price-hero{
+  background:linear-gradient(135deg,var(--d3) 0%,var(--d4) 100%);
+  border:1px solid var(--border);border-radius:4px;
+  padding:28px 32px;margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.price-hero::before{
+  content:'Au 79';position:absolute;right:-8px;top:50%;transform:translateY(-50%);
+  font-family:'Cormorant Garamond',serif;font-size:7rem;font-weight:300;font-style:italic;
+  color:rgba(201,168,76,.05);letter-spacing:-.02em;pointer-events:none;line-height:1;
+}
+.price-label{font-size:.58rem;letter-spacing:.25em;color:var(--dim);text-transform:uppercase;margin-bottom:10px}
+.price-row{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.price-val{font-family:'Cormorant Garamond',serif;font-size:3.4rem;font-weight:400;color:var(--gold-l);line-height:1}
+.price-unit{font-size:.65rem;color:var(--dim);margin-left:5px;vertical-align:super;font-family:'DM Mono',monospace;font-weight:300}
+.chg{font-size:.95rem;font-weight:500;padding:5px 12px;border-radius:3px;letter-spacing:.02em}
+.chg.up{background:var(--up-bg);color:var(--up);border:1px solid rgba(78,200,130,.2)}
+.chg.dn{background:var(--down-bg);color:var(--down);border:1px solid rgba(224,85,85,.2)}
+.price-idr{font-size:.78rem;color:var(--dim);margin-top:10px;letter-spacing:.03em}
+.price-idr strong{color:var(--gold);font-weight:400}
+
+/* ── STAT CARDS ─────────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.scard{background:var(--d3);border:1px solid var(--border2);border-radius:4px;padding:16px 14px;transition:border-color .2s}
+.scard:hover{border-color:var(--border)}
+.sl{font-size:.52rem;letter-spacing:.18em;color:var(--dim2);text-transform:uppercase;margin-bottom:9px}
+.sv{font-family:'Cormorant Garamond',serif;font-size:1.5rem;color:var(--gold-l);line-height:1;font-weight:400}
+.ss{font-size:.56rem;color:var(--dim2);margin-top:4px}
+
+/* ── TAB BAR ─────────────────────────────────────────── */
+.tab-bar{display:flex;border-bottom:1px solid var(--border2);overflow-x:auto;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;padding:12px 18px;
+  cursor:pointer;color:var(--dim);border:none;border-bottom:2px solid transparent;
+  background:none;font-family:'DM Mono',monospace;white-space:nowrap;transition:all .2s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tc{display:none}.tc.active{display:block}
+
+/* ── CHART BOX ──────────────────────────────────────── */
+.cbox{
+  background:var(--d3);border:1px solid var(--border2);
+  border-radius:4px;border-top-left-radius:0;border-top-right-radius:0;
+  padding:18px 20px 22px;margin-bottom:16px;
+}
+.chead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.chead-label{font-size:.58rem;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.tf-btns{display:flex;gap:5px}
+.tf{font-size:.58rem;padding:4px 10px;background:none;border:1px solid var(--border2);
+  color:var(--dim);border-radius:2px;cursor:pointer;font-family:'DM Mono',monospace;transition:all .2s}
+.tf.active,.tf:hover{background:rgba(201,168,76,.08);color:var(--gold);border-color:var(--border)}
+canvas{display:block;width:100%}
+#cv-candle{height:260px}
+#cv-line{height:110px}
+.chart-legend{display:flex;gap:16px;margin-top:10px;font-size:.58rem;color:var(--dim2)}
+.leg-item{display:flex;align-items:center;gap:5px}
+.leg-dot{width:8px;height:8px;border-radius:1px}
+
+/* ── ECO CALENDAR ───────────────────────────────────── */
+.eco-box{
+  background:var(--d3);border:1px solid var(--border2);
+  border-radius:4px;border-top-left-radius:0;border-top-right-radius:0;
+  padding:18px 20px;margin-bottom:16px;
+}
+.eco-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.eco-item{
+  display:grid;grid-template-columns:76px 1fr 88px;gap:14px;
+  padding:14px 0;border-bottom:1px solid var(--border2);align-items:start;
+}
+.eco-item:last-child{border-bottom:none}
+.eco-time-blk{display:flex;flex-direction:column;gap:3px}
+.eco-time{font-size:.65rem;color:var(--text);font-weight:500}
+.eco-date{font-size:.56rem;color:var(--dim2)}
+.eco-country{font-size:.54rem;letter-spacing:.1em;color:var(--gold-d);text-transform:uppercase;margin-top:2px}
+.eco-name{font-family:'Cormorant Garamond',serif;font-size:.95rem;color:var(--text);line-height:1.35;margin-bottom:4px}
+.eco-note{font-size:.62rem;color:var(--dim);line-height:1.55}
+.eco-vals{text-align:right;display:flex;flex-direction:column;gap:3px}
+.eco-actual{font-size:.72rem;color:var(--gold-l);font-weight:500}
+.eco-fore{font-size:.62rem;color:var(--dim)}
+.eco-prev{font-size:.58rem;color:var(--dim2)}
+.eco-pending{font-size:.58rem;color:var(--dim2);font-style:italic}
+.imp{display:inline-flex;align-items:center;gap:4px;font-size:.54rem;margin-top:5px}
+.imp-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.i-h{background:var(--down)}.i-m{background:var(--gold)}.i-l{background:var(--dim2)}
+.eff-pill{font-size:.55rem;padding:2px 7px;border-radius:20px;margin-top:4px;display:inline-block}
+.ep-up{background:var(--up-bg);color:var(--up)}
+.ep-dn{background:var(--down-bg);color:var(--down)}
+.ep-n{background:rgba(138,123,92,.12);color:var(--dim)}
+
+/* ── NEWS ───────────────────────────────────────────── */
+.nbox{
+  background:var(--d3);border:1px solid var(--border2);
+  border-radius:4px;border-top-left-radius:0;border-top-right-radius:0;
+  padding:18px 20px;margin-bottom:16px;
+}
+.nbox-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px}
+.nsrcs{font-size:.56rem;color:var(--dim2);margin-bottom:14px}
+.badge{font-size:.54rem;letter-spacing:.14em;background:rgba(201,168,76,.08);
+  border:1px solid rgba(201,168,76,.25);color:var(--gold);padding:3px 9px;border-radius:20px}
+.rfbtn{background:none;border:1px solid var(--border);color:var(--gold);
+  font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.12em;
+  padding:5px 14px;border-radius:3px;cursor:pointer;text-transform:uppercase;transition:all .2s}
+.rfbtn:hover{background:rgba(201,168,76,.08)}
+.rfbtn:disabled{opacity:.35;cursor:not-allowed}
+
+.nitem{
+  padding:16px 0;border-bottom:1px solid var(--border2);
+  display:grid;grid-template-columns:3px 1fr;gap:14px;
+  align-items:start;transition:padding .15s;
+}
+.nitem:last-child{border-bottom:none}
+.nitem:hover{padding-left:8px}
+.nbar{min-height:40px;border-radius:2px}
+.n-h{background:var(--down)}.n-m{background:var(--gold)}.n-l{background:var(--dim2)}
+.ncat{font-size:.54rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim2);margin-bottom:3px}
+.ntitle{font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:var(--text);line-height:1.4;margin-bottom:5px}
+.ntitle a{color:inherit;text-decoration:none;transition:color .15s}
+.ntitle a:hover{color:var(--gold-l)}
+.nai{font-size:.65rem;color:var(--dim);line-height:1.6;margin-bottom:5px;padding-left:8px;border-left:2px solid var(--border)}
+.ndesc{font-size:.62rem;color:var(--dim2);line-height:1.55;margin-bottom:5px}
+.nsrc{font-size:.58rem;color:var(--gold-d)}
+.nmeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px;align-items:center}
+.ntime{font-size:.58rem;color:var(--dim2)}
+.tag{font-size:.56rem;padding:2px 8px;border-radius:20px}
+.t-up{background:var(--up-bg);color:var(--up)}
+.t-dn{background:var(--down-bg);color:var(--down)}
+.t-n{background:rgba(138,123,92,.1);color:var(--dim)}
+
+/* ── LOADER / ERROR ─────────────────────────────────── */
+.loader{display:flex;flex-direction:column;align-items:center;padding:36px;gap:14px}
+.spin{width:28px;height:28px;border:2px solid rgba(201,168,76,.15);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-txt{font-size:.6rem;letter-spacing:.2em;color:var(--dim2);text-transform:uppercase}
+.err{font-size:.65rem;color:var(--down);padding:14px 16px;
+  background:rgba(224,85,85,.06);border:1px solid rgba(224,85,85,.15);
+  border-radius:3px;text-align:center;line-height:1.6}
+
+.section-title{
+  font-size:.58rem;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border2)}
+
+@media(max-width:640px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .price-val{font-size:2.6rem}
+  .logo-mark{font-size:1.9rem}
+  .eco-item{grid-template-columns:64px 1fr}
+  .eco-vals{display:none}
+  .tab{padding:10px 12px;font-size:.56rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">AURUM</div>
+      <div class="logo-sub">Gold Intelligence · Real-Time Dashboard</div>
+    </div>
+    <div class="hdr-right">
+      <div class="live-row"><div class="live-dot"></div>LIVE</div>
+      <div id="upd-time">—</div>
+      <div id="upd-st">Memuat...</div>
+    </div>
+  </header>
+
+  <!-- PRICE HERO -->
+  <div class="price-hero">
+    <div class="price-label">Harga Emas Spot · XAU/USD</div>
+    <div class="price-row">
+      <div>
+        <div class="price-val" id="px-usd">—<span class="price-unit">USD/oz</span></div>
+        <div class="price-idr">≈ <strong id="px-idr">—</strong> / gram</div>
+      </div>
+      <div id="px-chg" class="chg up">—</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="scard"><div class="sl">Open</div><div class="sv" id="s-open">—</div><div class="ss">USD/oz</div></div>
+    <div class="scard"><div class="sl">High / Low</div><div class="sv" id="s-hl">—</div><div class="ss">Hari ini</div></div>
+    <div class="scard"><div class="sl">Prev Close</div><div class="sv" id="s-prev">—</div><div class="ss">USD/oz</div></div>
+    <div class="scard"><div class="sl">Sentiment</div><div class="sv" id="s-sent">—</div><div class="ss" id="s-sub">—</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('candle',this)">Candlestick</button>
+    <button class="tab" onclick="switchTab('line',this)">Line Chart</button>
+    <button class="tab" onclick="switchTab('calendar',this)">Kalender Ekonomi</button>
+    <button class="tab" onclick="switchTab('news',this)">Berita Live</button>
+  </div>
+
+  <!-- TAB: CANDLESTICK -->
+  <div id="tc-candle" class="tc active">
+    <div class="cbox">
+      <div class="chead">
+        <span class="chead-label">XAU/USD · Twelve Data</span>
+        <div class="tf-btns">
+          <button class="tf active" onclick="loadCandles('1min',this)">1M</button>
+          <button class="tf" onclick="loadCandles('5min',this)">5M</button>
+          <button class="tf" onclick="loadCandles('15min',this)">15M</button>
+          <button class="tf" onclick="loadCandles('1h',this)">1H</button>
+          <button class="tf" onclick="loadCandles('1day',this)">1D</button>
+        </div>
+      </div>
+      <canvas id="cv-candle"></canvas>
+      <div class="chart-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--up)"></div>Bullish</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--down)"></div>Bearish</div>
+        <div id="candle-hover" style="margin-left:auto;font-size:.6rem;color:var(--dim)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: LINE -->
+  <div id="tc-line" class="tc">
+    <div class="cbox">
+      <div class="chead"><span class="chead-label">Pergerakan Intraday · Sesi Ini</span></div>
+      <canvas id="cv-line"></canvas>
+    </div>
+  </div>
+
+  <!-- TAB: CALENDAR -->
+  <div id="tc-calendar" class="tc">
+    <div class="eco-box" id="eco-box">
+      <div class="loader"><div class="spin"></div><div class="spin-txt">Memuat kalender ekonomi...</div></div>
+    </div>
+  </div>
+
+  <!-- TAB: NEWS -->
+  <div id="tc-news" class="tc">
+    <div class="nbox">
+      <div class="nbox-hdr">
+        <div>
+          <span class="badge">✦ LIVE RSS + AI</span>
+          <div class="nsrcs">Sumber: Kitco News · Reuters · MarketWatch · FXStreet · Investing.com</div>
+        </div>
+        <button class="rfbtn" id="news-btn" onclick="loadNews()">↻ Refresh</button>
+      </div>
+      <div id="news-inner">
+        <div class="loader"><div class="spin"></div><div class="spin-txt">Mengambil berita live...</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────
+const GOLD_KEY   = 'goldapi-8qy21fsmmmtjais-io';
+const TD_KEY     = '8eb333886ca54383826302c27b89a64e';   // Twelve Data
+const AV_KEY     = '2ZSS2SW8XZKPJ6Q8';                  // Alpha Vantage
+const IDR_RATE   = 16350;
+const GRAM_PER_OZ = 31.1035;
+
+const RSS_FEEDS = [
+  { name:'Kitco News',      url:'https://www.kitco.com/rss/kitconews.rss' },
+  { name:'MarketWatch',     url:'https://feeds.marketwatch.com/marketwatch/topstories/' },
+  { name:'Reuters Markets', url:'https://feeds.reuters.com/reuters/businessNews' },
+  { name:'FXStreet',        url:'https://www.fxstreet.com/rss/news' },
+  { name:'Investing.com',   url:'https://www.investing.com/rss/news_301.rss' },
+];
+const RSS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url=';
+const GOLD_KW = ['gold','xau','bullion','precious','fed','rate','inflation','dollar','cpi','nfp','powell','treasury','silver','geopolit','war','china','tariff','yield','bond'];
+
+let livePrice = null, openPrice = null;
+let lineHist = [];
+let currentTF = '1min';
+let candleCache = {};
+
+// ── GOLD PRICE (GoldAPI) ────────────────────────────────────
+async function loadPrice() {
+  try {
+    const r = await fetch('https://www.goldapi.io/api/XAU/USD', {
+      headers: { 'x-access-token': GOLD_KEY }
+    });
+    if (!r.ok) throw new Error(`GoldAPI ${r.status}`);
+    const d = await r.json();
+
+    livePrice  = d.price;
+    openPrice  = d.open_price  || d.price;
+    const hi   = d.high_price  || livePrice;
+    const lo   = d.low_price   || livePrice;
+    const pc   = d.prev_close_price || openPrice;
+    const chg  = livePrice - openPrice;
+    const pct  = (chg / openPrice) * 100;
+
+    // Seed line history
+    if (lineHist.length === 0) {
+      for (let i = 0; i < 40; i++)
+        lineHist.push(openPrice + (livePrice - openPrice) * (i/40) + (Math.random()-.5) * 1.2);
+    }
+    lineHist.push(livePrice);
+    if (lineHist.length > 150) lineHist.shift();
+
+    // DOM
+    document.getElementById('px-usd').innerHTML =
+      `$${livePrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}<span class="price-unit">USD/oz</span>`;
+    document.getElementById('px-idr').textContent =
+      'Rp ' + ((livePrice / GRAM_PER_OZ) * IDR_RATE).toLocaleString('id-ID', {maximumFractionDigits:0});
+
+    const b = document.getElementById('px-chg');
+    b.textContent = `${chg>=0?'+':''}$${Math.abs(chg).toFixed(2)}  (${chg>=0?'+':''}${pct.toFixed(2)}%)`;
+    b.className = `chg ${chg>=0?'up':'dn'}`;
+
+    document.getElementById('s-open').textContent = `$${openPrice.toFixed(2)}`;
+    document.getElementById('s-hl').textContent   = `${hi.toFixed(0)} / ${lo.toFixed(0)}`;
+    document.getElementById('s-prev').textContent = `$${pc.toFixed(2)}`;
+    const bull = pct > .3, bear = pct < -.3;
+    document.getElementById('s-sent').textContent = bull?'Bullish':bear?'Bearish':'Neutral';
+    document.getElementById('s-sub').textContent  = bull?'Tekanan beli':bear?'Tekanan jual':'Sideways';
+
+    const now = new Date();
+    document.getElementById('upd-time').textContent =
+      now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('upd-st').textContent = '✓ Real dari GoldAPI.io';
+
+    drawLine();
+    // Refresh live candle tick
+    if (candleCache[currentTF] && candleCache[currentTF].length) {
+      const arr = candleCache[currentTF];
+      const last = arr[arr.length-1];
+      last.c = livePrice;
+      last.h = Math.max(last.h, livePrice);
+      last.l = Math.min(last.l, livePrice);
+      drawCandle(arr);
+    }
+  } catch(e) {
+    document.getElementById('upd-st').textContent = `✗ ${e.message}`;
+    console.error('GoldAPI:', e);
+  }
+}
+
+// ── CANDLESTICK via Twelve Data ─────────────────────────────
+async function loadCandles(tf, el) {
+  currentTF = tf;
+  document.querySelectorAll('.tf').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  // Use cache if fresh (< 2 min)
+  if (candleCache[tf] && candleCache[tf]._ts && Date.now() - candleCache[tf]._ts < 120000) {
+    drawCandle(candleCache[tf]);
+    return;
+  }
+
+  const cv = document.getElementById('cv-candle');
+  const ctx = cv.getContext('2d');
+  const dpr = devicePixelRatio||1;
+  const rc  = cv.getBoundingClientRect();
+  cv.width  = rc.width*dpr; cv.height = rc.height*dpr;
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,rc.width,rc.height);
+  ctx.fillStyle = 'rgba(201,168,76,0.4)';
+  ctx.font = '11px DM Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText('Mengambil data dari Twelve Data...', rc.width/2, rc.height/2);
+
+  try {
+    const outputsize = tf === '1day' ? 60 : 80;
+    const url = `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${tf}&outputsize=${outputsize}&apikey=${TD_KEY}`;
+    const r = await fetch(url);
+    const d = await r.json();
+
+    if (d.status === 'error' || !d.values) throw new Error(d.message || 'Twelve Data error');
+
+    // Convert to OHLC array (newest last)
+    const candles = d.values.slice().reverse().map(v => ({
+      t: new Date(v.datetime).getTime(),
+      o: parseFloat(v.open),
+      h: parseFloat(v.high),
+      l: parseFloat(v.low),
+      c: parseFloat(v.close),
+    }));
+
+    candleCache[tf] = candles;
+    candleCache[tf]._ts = Date.now();
+    drawCandle(candles);
+
+  } catch(e) {
+    console.warn('Twelve Data failed, trying Alpha Vantage:', e);
+    await loadCandlesAV(tf);
+  }
+}
+
+// ── CANDLESTICK FALLBACK via Alpha Vantage ──────────────────
+async function loadCandlesAV(tf) {
+  try {
+    // Alpha Vantage only supports daily/weekly/monthly for XAU
+    const fn = 'FX_DAILY';
+    const url = `https://www.alphavantage.co/query?function=${fn}&from_symbol=XAU&to_symbol=USD&outputsize=compact&apikey=${AV_KEY}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const ts = d['Time Series FX (Daily)'];
+    if (!ts) throw new Error('Alpha Vantage: no data');
+
+    const candles = Object.entries(ts).slice(0,60).reverse().map(([date, v]) => ({
+      t: new Date(date).getTime(),
+      o: parseFloat(v['1. open']),
+      h: parseFloat(v['2. high']),
+      l: parseFloat(v['3. low']),
+      c: parseFloat(v['4. close']),
+    }));
+
+    candleCache[currentTF] = candles;
+    candleCache[currentTF]._ts = Date.now();
+    drawCandle(candles);
+  } catch(e) {
+    console.error('Alpha Vantage also failed:', e);
+    const cv = document.getElementById('cv-candle');
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.fillStyle = 'rgba(224,85,85,0.6)';
+    ctx.font = '11px DM Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Gagal memuat: ${e.message}`, cv.getBoundingClientRect().width/2, cv.getBoundingClientRect().height/2);
+  }
+}
+
+// ── DRAW CANDLESTICK ─────────────────────────────────────────
+function drawCandle(data) {
+  const cv  = document.getElementById('cv-candle');
+  if (!cv || !data || data.length < 2) return;
+  const ctx = cv.getContext('2d');
+  const dpr = devicePixelRatio||1;
+  const rc  = cv.getBoundingClientRect();
+  cv.width  = rc.width*dpr; cv.height = rc.height*dpr;
+  ctx.scale(dpr,dpr);
+  const W = rc.width, H = rc.height;
+
+  const raw = data.filter(d => !isNaN(d.o) && !isNaN(d.h) && !isNaN(d.l) && !isNaN(d.c));
+  if (!raw.length) return;
+
+  const pad = {t:14, b:28, l:10, r:68};
+  const cW = W - pad.l - pad.r;
+  const cH = H - pad.t - pad.b;
+
+  const allH = raw.map(d=>d.h), allL = raw.map(d=>d.l);
+  let pMax = Math.max(...allH), pMin = Math.min(...allL);
+  const margin = (pMax - pMin) * 0.06;
+  pMax += margin; pMin -= margin;
+  const pRng = pMax - pMin || 1;
+
+  const py  = v => pad.t + cH - ((v - pMin) / pRng) * cH;
+  const n   = raw.length;
+  const step = cW / n;
+  const cw  = Math.max(2, Math.min(16, step * 0.65));
+
+  ctx.clearRect(0,0,W,H);
+
+  // Background grid
+  const gridLines = 5;
+  for (let i = 0; i <= gridLines; i++) {
+    const y  = pad.t + (cH / gridLines) * i;
+    const pr = pMax - (pRng / gridLines) * i;
+    ctx.strokeStyle = 'rgba(201,168,76,0.06)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle   = 'rgba(201,168,76,0.45)';
+    ctx.font        = '9px DM Mono';
+    ctx.textAlign   = 'right';
+    ctx.fillText(pr.toFixed(1), W - 4, y + 3.5);
+  }
+
+  // Candles
+  raw.forEach((d, i) => {
+    const x    = pad.l + i * step + step / 2;
+    const isUp = d.c >= d.o;
+    const col  = isUp ? '#4EC882' : '#E05555';
+
+    // Wick
+    ctx.strokeStyle = col;
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, py(d.h));
+    ctx.lineTo(x, py(d.l));
+    ctx.stroke();
+
+    // Body
+    const bt = py(Math.max(d.o, d.c));
+    const bb = py(Math.min(d.o, d.c));
+    const bh = Math.max(1.5, bb - bt);
+
+    ctx.fillStyle = col;
+    if (isUp) {
+      ctx.fillRect(x - cw/2, bt, cw, bh);
+    } else {
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(x - cw/2, bt, cw, bh);
+      ctx.globalAlpha = 1;
+      ctx.strokeRect(x - cw/2, bt, cw, bh);
+    }
+  });
+
+  // X-axis time labels
+  const every = Math.max(1, Math.ceil(n / 7));
+  ctx.fillStyle  = 'rgba(138,123,92,0.65)';
+  ctx.textAlign  = 'center';
+  ctx.font       = '9px DM Mono';
+  raw.forEach((d, i) => {
+    if (i % every !== 0) return;
+    const x  = pad.l + i * step + step / 2;
+    const dt = new Date(d.t);
+    let lbl;
+    if (currentTF === '1day')
+      lbl = dt.toLocaleDateString('id-ID', {month:'short', day:'numeric'});
+    else if (currentTF === '1h')
+      lbl = dt.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+    else
+      lbl = dt.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+    ctx.fillText(lbl, x, H - 7);
+  });
+
+  // Live price dashed line
+  if (livePrice && livePrice >= pMin && livePrice <= pMax) {
+    const ly = py(livePrice);
+    ctx.setLineDash([5,4]);
+    ctx.strokeStyle = 'rgba(201,168,76,0.55)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, ly); ctx.lineTo(W - pad.r, ly); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle  = 'rgba(201,168,76,0.9)';
+    ctx.font       = 'bold 9px DM Mono';
+    ctx.textAlign  = 'right';
+    ctx.fillText(`$${livePrice.toFixed(1)}`, W - 2, ly - 3);
+  }
+}
+
+// ── DRAW LINE CHART ──────────────────────────────────────────
+function drawLine() {
+  const cv = document.getElementById('cv-line');
+  if (!cv || lineHist.length < 2) return;
+  const ctx = cv.getContext('2d');
+  const dpr = devicePixelRatio||1;
+  const rc  = cv.getBoundingClientRect();
+  cv.width  = rc.width*dpr; cv.height = rc.height*dpr;
+  ctx.scale(dpr,dpr);
+  const W = rc.width, H = rc.height, d = lineHist;
+  const mn = Math.min(...d)-3, mx = Math.max(...d)+3, rng = mx-mn;
+  const gx = i => (i / (d.length-1)) * W;
+  const gy = v => H - ((v-mn)/rng) * H*.82 - H*.09;
+  const up = d[d.length-1] >= d[0];
+  const lc = up ? '#4EC882' : '#E05555';
+  ctx.clearRect(0,0,W,H);
+
+  const gr = ctx.createLinearGradient(0,0,0,H);
+  gr.addColorStop(0, up?'rgba(78,200,130,.15)':'rgba(224,85,85,.15)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.beginPath(); ctx.moveTo(gx(0), gy(d[0]));
+  for (let i=1;i<d.length;i++) {
+    const xm=(gx(i-1)+gx(i))/2, ym=(gy(d[i-1])+gy(d[i]))/2;
+    ctx.quadraticCurveTo(gx(i-1),gy(d[i-1]),xm,ym);
+  }
+  ctx.quadraticCurveTo(gx(d.length-2),gy(d[d.length-2]),gx(d.length-1),gy(d[d.length-1]));
+  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+  ctx.fillStyle = gr; ctx.fill();
+
+  ctx.beginPath(); ctx.moveTo(gx(0),gy(d[0]));
+  for (let i=1;i<d.length;i++) {
+    const xm=(gx(i-1)+gx(i))/2, ym=(gy(d[i-1])+gy(d[i]))/2;
+    ctx.quadraticCurveTo(gx(i-1),gy(d[i-1]),xm,ym);
+  }
+  ctx.quadraticCurveTo(gx(d.length-2),gy(d[d.length-2]),gx(d.length-1),gy(d[d.length-1]));
+  ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.stroke();
+
+  ctx.beginPath(); ctx.arc(gx(d.length-1),gy(d[d.length-1]),4.5,0,Math.PI*2);
+  ctx.fillStyle=lc; ctx.fill();
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+function switchTab(id, el) {
+  document.querySelectorAll('.tc').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tc-'+id).classList.add('active');
+  el.classList.add('active');
+  setTimeout(() => { drawCandle(candleCache[currentTF]); drawLine(); }, 60);
+}
+
+// ── ECONOMIC CALENDAR (AI) ───────────────────────────────────
+async function loadCalendar() {
+  const box = document.getElementById('eco-box');
+  const today = new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1600,
+        messages:[{role:'user', content:
+`Kamu analis ekonomi makro. Hari ini: ${today}. Harga emas: $${livePrice?livePrice.toFixed(0):'~3100'}/oz.
+
+Berikan 9 event ekonomi penting minggu ini & pekan depan yang berdampak ke harga emas (CPI, NFP, Fed Rate Decision, GDP, PPI, ISM, Jobless Claims, FOMC Minutes, dll).
+
+HANYA JSON array, tanpa teks lain:
+[{"event":"nama","country":"US/EU/CN/JP/UK","date":"DD MMM YYYY","time_wib":"HH:MM","impact":"high|med|low","effect_gold":"up|down|neutral","actual":"nilai aktual atau null","forecast":"perkiraan atau null","previous":"nilai sebelumnya atau null","note":"1 kalimat dampak ke emas"}]`
+        }]
+      })
+    });
+    const data = await r.json();
+    const raw  = data.content.map(b=>b.text||'').join('');
+    const m    = raw.match(/\[[\s\S]*\]/);
+    if (!m) throw new Error('parse error');
+    const events = JSON.parse(m[0]);
+
+    const rows = events.map(e => {
+      const ic = e.impact==='high'?'i-h':e.impact==='med'?'i-m':'i-l';
+      const ec = e.effect_gold==='up'?'ep-up':e.effect_gold==='down'?'ep-dn':'ep-n';
+      const el = e.effect_gold==='up'?'▲ Bullish Emas':e.effect_gold==='down'?'▼ Bearish Emas':'● Netral';
+      const hasAct = e.actual && e.actual !== 'null' && e.actual !== null;
+      return `
+      <div class="eco-item">
+        <div class="eco-time-blk">
+          <div class="eco-time">${e.time_wib} WIB</div>
+          <div class="eco-date">${e.date}</div>
+          <div class="eco-country">${e.country}</div>
+        </div>
+        <div>
+          <div class="eco-name">${e.event}</div>
+          <div class="eco-note">${e.note}</div>
+          <span class="eff-pill ${ec}">${el}</span>
+          <div class="imp"><span class="imp-dot ${ic}"></span>${e.impact==='high'?'Impact Tinggi':e.impact==='med'?'Sedang':'Rendah'}</div>
+        </div>
+        <div class="eco-vals">
+          ${hasAct
+            ? `<div class="eco-actual">${e.actual}</div>`
+            : `<div class="eco-pending">Belum rilis</div>`}
+          ${e.forecast&&e.forecast!=='null'?`<div class="eco-fore">Est: ${e.forecast}</div>`:''}
+          ${e.previous&&e.previous!=='null'?`<div class="eco-prev">Prev: ${e.previous}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+    box.innerHTML = `
+      <div class="eco-hdr">
+        <span class="section-title" style="flex:1">Kalender Ekonomi · Minggu Ini & Pekan Depan</span>
+        <span class="badge">✦ AI-Powered</span>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:14px;font-size:.56rem;color:var(--dim2)">
+        <span><span class="imp-dot i-h" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--down);margin-right:4px"></span>Tinggi</span>
+        <span><span class="imp-dot i-m" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:4px"></span>Sedang</span>
+        <span><span class="imp-dot i-l" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim2);margin-right:4px"></span>Rendah</span>
+      </div>
+      ${rows}`;
+  } catch(e) {
+    box.innerHTML = `<div class="err">⚠ Gagal memuat kalender: ${e.message}</div>`;
+  }
+}
+
+// ── NEWS via RSS + AI ─────────────────────────────────────────
+async function loadNews() {
+  const btn = document.getElementById('news-btn');
+  btn.disabled = true; btn.textContent = 'Loading...';
+  document.getElementById('news-inner').innerHTML =
+    `<div class="loader"><div class="spin"></div><div class="spin-txt">Mengambil RSS feeds...</div></div>`;
+
+  try {
+    // Fetch all RSS feeds in parallel
+    const settled = await Promise.allSettled(
+      RSS_FEEDS.map(feed =>
+        fetch(`${RSS_PROXY}${encodeURIComponent(feed.url)}&count=12`)
+          .then(r => r.json())
+          .then(d => ({ source: feed.name, items: d.items || [] }))
+      )
+    );
+
+    let all = [];
+    settled.forEach(r => {
+      if (r.status === 'fulfilled') {
+        r.value.items.forEach(item => {
+          all.push({
+            title:   (item.title||'').replace(/<[^>]+>/g,'').trim(),
+            desc:    (item.description||'').replace(/<[^>]+>/g,'').substring(0,220).trim(),
+            link:    item.link||'#',
+            pubDate: item.pubDate||'',
+            source:  r.value.source,
+          });
+        });
+      }
+    });
+
+    // Filter relevant + deduplicate by title similarity
+    const filtered = all
+      .filter(a => GOLD_KW.some(kw => (a.title+' '+a.desc).toLowerCase().includes(kw)))
+      .filter((a,i,arr) => arr.findIndex(b => b.title.substring(0,40) === a.title.substring(0,40)) === i);
+
+    filtered.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
+    const top = filtered.slice(0, 8);
+
+    if (top.length === 0) throw new Error('Tidak ada artikel relevan dari RSS feeds');
+
+    // AI analysis
+    document.getElementById('news-inner').innerHTML =
+      `<div class="loader"><div class="spin"></div><div class="spin-txt">AI menganalisis dampak ke harga emas...</div></div>`;
+
+    const summaries = top.map((a,i) => `${i+1}. [${a.source}] ${a.title}`).join('\n');
+
+    const aiR = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        messages:[{role:'user', content:
+`Harga emas saat ini: $${livePrice?livePrice.toFixed(0):'~3100'}/oz.
+
+Berita terbaru dari RSS feeds:
+${summaries}
+
+Analisis dampak tiap berita ke harga emas. HANYA JSON array:
+[{"idx":1,"cat":"kategori singkat","impact":"high|med|low","effect":"up|down|neutral","reason":"1 kalimat dalam Bahasa Indonesia"}]`
+        }]
+      })
+    });
+    const aiData = await aiR.json();
+    const aiRaw  = aiData.content.map(b=>b.text||'').join('');
+    const aiM    = aiRaw.match(/\[[\s\S]*\]/);
+    const analyses = aiM ? JSON.parse(aiM[0]) : [];
+
+    const html = top.map((a, i) => {
+      const ai  = analyses.find(x => x.idx === i+1) || {cat:'Pasar',impact:'low',effect:'neutral',reason:''};
+      const ago = timeSince(new Date(a.pubDate));
+      const efL = ai.effect==='up'?'▲ Bullish':ai.effect==='down'?'▼ Bearish':'● Neutral';
+      const efC = `tag t-${ai.effect==='up'?'up':ai.effect==='down'?'dn':'n'}`;
+      const imp = ai.impact==='high'?'Tinggi':ai.impact==='med'?'Sedang':'Rendah';
+      return `
+      <div class="nitem">
+        <div class="nbar n-${ai.impact.charAt(0)}"></div>
+        <div>
+          <div class="ncat">${ai.cat}</div>
+          <div class="ntitle"><a href="${a.link}" target="_blank" rel="noopener noreferrer">${a.title}</a></div>
+          ${ai.reason ? `<div class="nai">${ai.reason}</div>` : ''}
+          ${a.desc ? `<div class="ndesc">${a.desc}…</div>` : ''}
+          <div class="nsrc">📰 ${a.source}</div>
+          <div class="nmeta">
+            <span class="ntime">⏱ ${ago}</span>
+            <span class="${efC}">${efL}</span>
+            <span class="tag t-n">Impact ${imp}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('news-inner').innerHTML = html;
+
+  } catch(e) {
+    document.getElementById('news-inner').innerHTML =
+      `<div class="err">⚠ Gagal memuat berita: ${e.message}<br><small style="color:var(--dim2);margin-top:4px;display:block">Coba klik Refresh — RSS proxy kadang perlu beberapa detik.</small></div>`;
+    console.error('News error:', e);
+  }
+
+  btn.disabled = false; btn.textContent = '↻ Refresh';
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function timeSince(d) {
+  if (!d || isNaN(d)) return '—';
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 60)   return `${s}d lalu`;
+  if (s < 3600) return `${Math.floor(s/60)}m lalu`;
+  if (s < 86400) return `${Math.floor(s/3600)}j lalu`;
+  return `${Math.floor(s/86400)} hari lalu`;
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  await loadPrice();
+  await loadCandles('1min', null);
+  document.querySelector('.tf.active') || document.querySelectorAll('.tf')[0].classList.add('active');
+  loadCalendar();
+  loadNews();
+
+  // Auto-refresh price every 30s
+  setInterval(async () => { await loadPrice(); }, 30000);
+  // Auto-refresh candle every 60s
+  setInterval(async () => { candleCache[currentTF] && delete candleCache[currentTF]._ts; await loadCandles(currentTF, null); }, 60000);
+  // Auto-refresh news every 10min
+  setInterval(loadNews, 10 * 60 * 1000);
+}
+
+window.addEventListener('load', init);
+window.addEventListener('resize', () => { drawCandle(candleCache[currentTF]); drawLine(); });
+</script>
+</body>
+</html>
