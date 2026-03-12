@@ -248,18 +248,18 @@ let livePrice=null, openPrice=null, lineHist=[], candleCache={}, currentTF='1min
 
 // ── FRED Series IDs ─────────────────────────────────────────
 const FRED_SERIES = [
-  { id:'CPIAUCSL',   name:'CPI (Inflasi)',        unit:'%',  note:'Consumer Price Index YoY — naik = bearish emas jangka pendek', impact:'high', goldEffect:'down' },
-  { id:'CPILFESL',   name:'Core CPI',             unit:'%',  note:'CPI tanpa energi & pangan — indikator inflasi sticky', impact:'high', goldEffect:'down' },
-  { id:'PAYEMS',     name:'NFP (Non-Farm Payroll)',unit:'K',  note:'Data pekerjaan — kuat = bearish emas, lemah = bullish', impact:'high', goldEffect:'down' },
-  { id:'UNRATE',     name:'Unemployment Rate',    unit:'%',  note:'Tingkat pengangguran — naik = bullish emas', impact:'high', goldEffect:'up' },
-  { id:'FEDFUNDS',   name:'Fed Funds Rate',       unit:'%',  note:'Suku bunga acuan Fed — naik = bearish emas', impact:'high', goldEffect:'down' },
-  { id:'PCEPI',      name:'PCE Price Index',      unit:'%',  note:'Inflasi favorit Fed — acuan utama keputusan rate', impact:'high', goldEffect:'down' },
-  { id:'A191RL1Q225SBEA', name:'GDP Growth',      unit:'%',  note:'Pertumbuhan ekonomi AS — kuat = bearish emas', impact:'med', goldEffect:'down' },
-  { id:'PPIFIS',     name:'PPI (Producer Price)', unit:'%',  note:'Inflasi level produsen — leading indicator CPI', impact:'med', goldEffect:'down' },
-  { id:'ICSA',       name:'Jobless Claims',       unit:'K',  note:'Klaim pengangguran mingguan — naik = bullish emas', impact:'med', goldEffect:'up' },
-  { id:'DGS10',      name:'US 10Y Treasury Yield',unit:'%',  note:'Yield obligasi — naik = bearish emas (opportunity cost)', impact:'high', goldEffect:'down' },
-  { id:'DTWEXBGS',   name:'USD Index (Broad)',    unit:'idx',note:'Nilai tukar dolar — dolar kuat = bearish emas', impact:'high', goldEffect:'down' },
-  { id:'RSAFS',      name:'Retail Sales',         unit:'B$', note:'Konsumsi AS — kuat = ekonomi solid = bearish emas', impact:'med', goldEffect:'down' },
+  { id:'CPIAUCSL',        name:'CPI (Inflasi)',         unit:'%',  note:'Consumer Price Index YoY — naik = bearish emas', impact:'high', goldEffect:'down', nextRelease:'10 Apr 2026', freq:'Bulanan' },
+  { id:'CPILFESL',        name:'Core CPI',              unit:'%',  note:'CPI tanpa energi & pangan — inflasi sticky', impact:'high', goldEffect:'down', nextRelease:'10 Apr 2026', freq:'Bulanan' },
+  { id:'PAYEMS',          name:'NFP (Non-Farm Payroll)', unit:'K',  note:'Data pekerjaan — kuat = bearish emas, lemah = bullish', impact:'high', goldEffect:'down', nextRelease:'1 Mei 2026', freq:'Bulanan' },
+  { id:'UNRATE',          name:'Unemployment Rate',     unit:'%',  note:'Tingkat pengangguran — naik = bullish emas', impact:'high', goldEffect:'up',   nextRelease:'1 Mei 2026', freq:'Bulanan' },
+  { id:'FEDFUNDS',        name:'Fed Funds Rate',        unit:'%',  note:'Suku bunga acuan Fed — naik = bearish emas', impact:'high', goldEffect:'down', nextRelease:'29 Apr 2026', freq:'Per FOMC' },
+  { id:'PCEPI',           name:'PCE Price Index',       unit:'%',  note:'Inflasi favorit Fed — acuan utama keputusan rate', impact:'high', goldEffect:'down', nextRelease:'27 Mar 2026', freq:'Bulanan' },
+  { id:'A191RL1Q225SBEA', name:'GDP Growth',            unit:'%',  note:'Pertumbuhan ekonomi AS — kuat = bearish emas', impact:'med',  goldEffect:'down', nextRelease:'27 Mar 2026', freq:'Kuartalan' },
+  { id:'PPIFIS',          name:'PPI (Producer Price)',  unit:'%',  note:'Inflasi level produsen — leading indicator CPI', impact:'med', goldEffect:'down', nextRelease:'13 Mar 2026', freq:'Bulanan' },
+  { id:'ICSA',            name:'Jobless Claims',        unit:'K',  note:'Klaim pengangguran mingguan — naik = bullish emas', impact:'med', goldEffect:'up', nextRelease:'19 Mar 2026', freq:'Mingguan' },
+  { id:'DGS10',           name:'US 10Y Treasury Yield', unit:'%',  note:'Yield obligasi — naik = bearish emas', impact:'high', goldEffect:'down', nextRelease:'Setiap hari', freq:'Harian' },
+  { id:'DTWEXBGS',        name:'USD Index (Broad)',     unit:'idx', note:'Nilai tukar dolar — dolar kuat = bearish emas', impact:'high', goldEffect:'down', nextRelease:'Setiap hari', freq:'Harian' },
+  { id:'RSAFS',           name:'Retail Sales',         unit:'B$',  note:'Konsumsi AS — kuat = ekonomi solid = bearish emas', impact:'med', goldEffect:'down', nextRelease:'16 Apr 2026', freq:'Bulanan' },
 ];
 
 // Upcoming events (jadwal resmi 2026 - tidak berubah-ubah)
@@ -330,7 +330,9 @@ async function loadEconomyData() {
         <span style="color:${isUp?'var(--up)':'var(--down)'}">${isUp?'▲':'▼'} ${Math.abs(chg).toFixed(2)} dari periode lalu</span>
       </div>` : ''}
       <div class="eco-card-sub">${s.note}</div>
-      <div class="eco-card-date">Data: ${dateStr}</div>
+      <div class="eco-card-date">Data terakhir: ${dateStr}</div>
+      <div style="font-size:.58rem;color:var(--gold);margin-top:4px">🗓 Rilis berikutnya: ${s.nextRelease}</div>
+      <div style="font-size:.54rem;color:var(--dim2);margin-top:2px">Frekuensi: ${s.freq}</div>
       <span class="eco-impact ${effectClass}">${effectLabel}</span>
     </div>`;
   }).join('');
@@ -498,34 +500,66 @@ function switchTab(id,el){
   setTimeout(()=>{drawCandle(candleCache[currentTF]);drawLine();},60);
 }
 
-// ── NEWS via GNews ──────────────────────────────────────────
+// ── NEWS via RSS (rss2json proxy - terbukti work dari browser) ──
+const RSS_FEEDS=[
+  {name:'Kitco News',    url:'https://www.kitco.com/rss/kitconews.rss'},
+  {name:'MarketWatch',   url:'https://feeds.marketwatch.com/marketwatch/topstories/'},
+  {name:'Reuters',       url:'https://feeds.reuters.com/reuters/businessNews'},
+  {name:'FXStreet',      url:'https://www.fxstreet.com/rss/news'},
+  {name:'Mining.com',    url:'https://www.mining.com/feed/'},
+];
+const PROXY='https://api.rss2json.com/v1/api.json?rss_url=';
+const CATS={'fed|fomc|powell|rate|interest':'Fed Policy','cpi|inflation|pce|ppi':'Inflasi','gold|xau|bullion|precious':'Harga Emas','dollar|usd|dxy':'USD Index','war|geopolit|conflict|ukraine|iran|israel':'Geopolitik','china|asia|yuan':'Pasar Asia','gdp|recession|growth|economy':'Ekonomi Makro','silver|copper|commodity|oil':'Komoditas'};
+const getCat=t=>{const tl=t.toLowerCase();for(const[k,v]of Object.entries(CATS))if(k.split('|').some(x=>tl.includes(x)))return v;return 'Pasar Global';};
+const getEff=t=>{const tl=t.toLowerCase();if(/rise|surge|rally|jump|gain|soar|climb/.test(tl))return 'up';if(/fall|drop|decline|slump|plunge|sink/.test(tl))return 'dn';return 'n';};
+const getImp=c=>['Fed Policy','Inflasi','Harga Emas','USD Index'].includes(c)?'h':['Geopolitik','Ekonomi Makro'].includes(c)?'m':'l';
+const KW=['gold','xau','silver','bullion','fed','fomc','rate','inflation','dollar','cpi','nfp','powell','treasury','yield','bond','economy','gdp','trade','tariff','war','china','oil','commodity','market','price'];
+
 async function loadNews(){
   const btn=document.getElementById('news-btn');
   btn.disabled=true;btn.textContent='Loading...';
-  document.getElementById('news-inner').innerHTML=`<div class="loader"><div class="spin"></div><div class="spin-txt">Mengambil berita live...</div></div>`;
+  document.getElementById('news-inner').innerHTML=`<div class="loader"><div class="spin"></div><div class="spin-txt">Mengambil berita dari RSS feeds...</div></div>`;
   try{
-    const queries=['gold price market','XAU federal reserve inflation','gold bullion economy'];
-    const q=queries[Math.floor(Math.random()*queries.length)];
-    const r=await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(q)}&lang=en&country=us&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`);
-    if(!r.ok) throw new Error(`GNews ${r.status}`);
-    const d=await r.json();
-    if(!d.articles?.length) throw new Error('Tidak ada artikel');
+    const settled=await Promise.allSettled(
+      RSS_FEEDS.map(f=>
+        fetch(`${PROXY}${encodeURIComponent(f.url)}&count=15`)
+          .then(r=>r.json())
+          .then(d=>({name:f.name,items:d.items||[]}))
+      )
+    );
+    let all=[];
+    settled.forEach(r=>{
+      if(r.status==='fulfilled'){
+        r.value.items.forEach(item=>{
+          all.push({
+            title:(item.title||'').replace(/<[^>]+>/g,'').trim(),
+            desc:(item.description||'').replace(/<[^>]+>/g,'').substring(0,200).trim(),
+            link:item.link||'#',
+            pubDate:item.pubDate||'',
+            source:r.value.name,
+          });
+        });
+      }
+    });
+    // Deduplicate
+    all=all.filter((a,i,arr)=>arr.findIndex(b=>b.title.substring(0,40)===a.title.substring(0,40))===i);
+    // Filter by keywords, fallback ke semua jika kurang dari 3
+    let filtered=all.filter(a=>KW.some(kw=>(a.title+' '+a.desc).toLowerCase().includes(kw)));
+    if(filtered.length<3) filtered=all;
+    filtered.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+    const top=filtered.slice(0,8);
+    if(top.length===0) throw new Error('RSS tidak mengembalikan artikel, coba refresh');
 
-    const CATS={'fed|fomc|powell|rate|interest':'Fed Policy','cpi|inflation|pce|ppi':'Inflasi','gold|xau|bullion':'Harga Emas','dollar|usd|dxy':'USD Index','war|geopolit|conflict|ukraine|iran|israel':'Geopolitik','china|asia|yuan':'Pasar Asia','gdp|recession|growth|economy':'Ekonomi Makro','silver|copper|commodity|oil':'Komoditas'};
-    const getCat=t=>{const tl=t.toLowerCase();for(const[k,v]of Object.entries(CATS))if(k.split('|').some(x=>tl.includes(x)))return v;return 'Pasar Global';};
-    const getEff=t=>{const tl=t.toLowerCase();if(/rise|surge|rally|jump|gain|soar|climb/.test(tl))return 'up';if(/fall|drop|decline|slump|plunge|sink/.test(tl))return 'dn';return 'n';};
-    const getImp=c=>['Fed Policy','Inflasi','Harga Emas','USD Index'].includes(c)?'h':['Geopolitik','Ekonomi Makro'].includes(c)?'m':'l';
-
-    const html=d.articles.slice(0,8).map(a=>{
-      const cat=getCat(a.title),eff=getEff(a.title),imp=getImp(cat),ago=timeSince(new Date(a.publishedAt));
+    const html=top.map(a=>{
+      const cat=getCat(a.title),eff=getEff(a.title),imp=getImp(cat),ago=timeSince(new Date(a.pubDate));
       const effL=eff==='up'?'▲ Bullish':eff==='dn'?'▼ Bearish':'● Neutral';
       return `<div class="nitem">
         <div class="nbar n-${imp}"></div>
         <div>
           <div class="ncat">${cat}</div>
-          <div class="ntitle"><a href="${a.url}" target="_blank" rel="noopener">${a.title}</a></div>
-          ${a.description?`<div class="ndesc">${a.description.substring(0,180)}…</div>`:''}
-          <div class="nsrc">📰 ${a.source.name}</div>
+          <div class="ntitle"><a href="${a.link}" target="_blank" rel="noopener">${a.title}</a></div>
+          ${a.desc?`<div class="ndesc">${a.desc.substring(0,180)}…</div>`:''}
+          <div class="nsrc">📰 ${a.source}</div>
           <div class="nmeta">
             <span class="ntime">⏱ ${ago}</span>
             <span class="tag t-${eff}">${effL}</span>
