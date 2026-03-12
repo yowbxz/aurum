@@ -222,8 +222,8 @@ canvas{display:block;width:100%}
     <div class="nbox">
       <div class="nbox-hdr">
         <div>
-          <span class="badge">✦ LIVE · GNews API</span>
-          <div style="font-size:.56rem;color:var(--dim2);margin-top:5px">Reuters · Bloomberg · MarketWatch · FT · CNBC · Kitco</div>
+          <span class="badge">✦ LIVE · TheNewsAPI</span>
+          <div style="font-size:.56rem;color:var(--dim2);margin-top:5px">Bloomberg · Reuters · FT · MarketWatch · CNBC · WSJ</div>
         </div>
         <button class="rfbtn" id="news-btn" onclick="loadNews()">↻ Refresh</button>
       </div>
@@ -363,40 +363,98 @@ async function loadEconomyData() {
   document.getElementById('upcoming-list').innerHTML = upHtml;
 }
 
-// ── GOLD PRICE ──────────────────────────────────────────────
+// ── GOLD PRICE (multi-source fallback) ──────────────────────
 async function loadPrice() {
-  try {
-    const r = await fetch('https://www.goldapi.io/api/XAU/USD',{headers:{'x-access-token':GOLD_KEY}});
-    if(!r.ok) throw new Error(r.status);
-    const d = await r.json();
-    livePrice=d.price; openPrice=d.open_price||d.price;
-    const hi=d.high_price||livePrice, lo=d.low_price||livePrice, pc=d.prev_close_price||openPrice;
-    const chg=livePrice-openPrice, pct=(chg/openPrice)*100;
+  let data = null;
+  let src = '';
 
-    if(lineHist.length===0) for(let i=0;i<40;i++) lineHist.push(openPrice+(livePrice-openPrice)*(i/40)+(Math.random()-.5)*1.2);
-    lineHist.push(livePrice);
-    if(lineHist.length>150) lineHist.shift();
+  // Source 1: Twelve Data quote (sudah terbukti work)
+  if(!data){
+    try{
+      const r = await fetch(`https://api.twelvedata.com/quote?symbol=XAU/USD&apikey=${TD_KEY}`);
+      if(r.ok){
+        const d = await r.json();
+        if(d.close){
+          const p=parseFloat(d.close);
+          const o=parseFloat(d.open||p);
+          const hi=parseFloat(d.high||p);
+          const lo=parseFloat(d.low||p);
+          const pc=parseFloat(d.previous_close||o);
+          data={price:p,open:o,hi,lo,pc}; src='Twelve Data';
+        }
+      }
+    }catch(e){}
+  }
 
-    document.getElementById('px-usd').innerHTML=`$${livePrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}<span class="price-unit">USD/oz</span>`;
-    document.getElementById('px-idr').textContent='Rp '+((livePrice/GRAM)*IDR_RATE).toLocaleString('id-ID',{maximumFractionDigits:0});
-    const b=document.getElementById('px-chg');
-    b.textContent=`${chg>=0?'+':''}$${Math.abs(chg).toFixed(2)}  (${chg>=0?'+':''}${pct.toFixed(2)}%)`;
-    b.className=`chg ${chg>=0?'up':'dn'}`;
-    document.getElementById('s-open').textContent=`$${openPrice.toFixed(2)}`;
-    document.getElementById('s-hl').textContent=`${hi.toFixed(0)} / ${lo.toFixed(0)}`;
-    document.getElementById('s-prev').textContent=`$${pc.toFixed(2)}`;
-    const bull=pct>.3,bear=pct<-.3;
-    document.getElementById('s-sent').textContent=bull?'Bullish':bear?'Bearish':'Neutral';
-    document.getElementById('s-sub').textContent=bull?'Tekanan beli':bear?'Tekanan jual':'Sideways';
-    document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    document.getElementById('upd-st').textContent='✓ Real dari GoldAPI.io';
-    drawLine();
-    if(candleCache[currentTF]?.length){
-      const arr=candleCache[currentTF],last=arr[arr.length-1];
-      last.c=livePrice;last.h=Math.max(last.h,livePrice);last.l=Math.min(last.l,livePrice);
-      drawCandle(arr);
-    }
-  } catch(e){document.getElementById('upd-st').textContent=`✗ ${e.message}`;}
+  // Source 2: GoldAPI fallback
+  if(!data){
+    try {
+      const r = await fetch('https://www.goldapi.io/api/XAU/USD',{headers:{'x-access-token':GOLD_KEY}});
+      if(r.ok){
+        const d = await r.json();
+        if(d.price){ data={price:d.price,open:d.open_price||d.price,hi:d.high_price||d.price,lo:d.low_price||d.price,pc:d.prev_close_price||d.open_price||d.price}; src='GoldAPI'; }
+      }
+    } catch(e){}
+  }
+
+  // Source 3: Alpha Vantage FX realtime
+  if(!data){
+    try{
+      const r = await fetch(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=XAU&to_currency=USD&apikey=${AV_KEY}`);
+      if(r.ok){
+        const d = await r.json();
+        const rt = d['Realtime Currency Exchange Rate'];
+        if(rt){
+          const p=parseFloat(rt['5. Exchange Rate']);
+          data={price:p,open:p,hi:p,lo:p,pc:p}; src='Alpha Vantage';
+        }
+      }
+    }catch(e){}
+  }
+
+  // Source 4: metals.live (public, no key)
+  if(!data){
+    try{
+      const r = await fetch('https://metals.live/api/spot');
+      if(r.ok){
+        const d = await r.json();
+        const gold = Array.isArray(d) ? d.find(x=>x.metal==='gold'||x.symbol==='XAU') : null;
+        if(gold?.price){
+          const p=parseFloat(gold.price);
+          data={price:p,open:p,hi:p,lo:p,pc:p}; src='metals.live';
+        }
+      }
+    }catch(e){}
+  }
+
+  if(!data){ document.getElementById('upd-st').textContent='✗ Semua sumber harga gagal'; return; }
+
+  livePrice=data.price; openPrice=data.open;
+  const chg=livePrice-openPrice, pct=(chg/openPrice)*100;
+
+  if(lineHist.length===0) for(let i=0;i<40;i++) lineHist.push(openPrice+(livePrice-openPrice)*(i/40)+(Math.random()-.5)*1.2);
+  lineHist.push(livePrice);
+  if(lineHist.length>150) lineHist.shift();
+
+  document.getElementById('px-usd').innerHTML=`$${livePrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}<span class="price-unit">USD/oz</span>`;
+  document.getElementById('px-idr').textContent='Rp '+((livePrice/GRAM)*IDR_RATE).toLocaleString('id-ID',{maximumFractionDigits:0});
+  const b=document.getElementById('px-chg');
+  b.textContent=`${chg>=0?'+':''}$${Math.abs(chg).toFixed(2)}  (${chg>=0?'+':''}${pct.toFixed(2)}%)`;
+  b.className=`chg ${chg>=0?'up':'dn'}`;
+  document.getElementById('s-open').textContent=`$${openPrice.toFixed(2)}`;
+  document.getElementById('s-hl').textContent=`${data.hi.toFixed(0)} / ${data.lo.toFixed(0)}`;
+  document.getElementById('s-prev').textContent=`$${data.pc.toFixed(2)}`;
+  const bull=pct>.3,bear=pct<-.3;
+  document.getElementById('s-sent').textContent=bull?'Bullish':bear?'Bearish':'Neutral';
+  document.getElementById('s-sub').textContent=bull?'Tekanan beli':bear?'Tekanan jual':'Sideways';
+  document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('upd-st').textContent=`✓ Real dari ${src}`;
+  drawLine();
+  if(candleCache[currentTF]?.length){
+    const arr=candleCache[currentTF],last=arr[arr.length-1];
+    last.c=livePrice;last.h=Math.max(last.h,livePrice);last.l=Math.min(last.l,livePrice);
+    drawCandle(arr);
+  }
 }
 
 // ── CANDLESTICK ─────────────────────────────────────────────
@@ -500,66 +558,38 @@ function switchTab(id,el){
   setTimeout(()=>{drawCandle(candleCache[currentTF]);drawLine();},60);
 }
 
-// ── NEWS via RSS (rss2json proxy - terbukti work dari browser) ──
-const RSS_FEEDS=[
-  {name:'Kitco News',    url:'https://www.kitco.com/rss/kitconews.rss'},
-  {name:'MarketWatch',   url:'https://feeds.marketwatch.com/marketwatch/topstories/'},
-  {name:'Reuters',       url:'https://feeds.reuters.com/reuters/businessNews'},
-  {name:'FXStreet',      url:'https://www.fxstreet.com/rss/news'},
-  {name:'Mining.com',    url:'https://www.mining.com/feed/'},
-];
-const PROXY='https://api.rss2json.com/v1/api.json?rss_url=';
+// ── NEWS via TheNewsAPI (support browser, no CORS) ──────────
+const THENEWS_KEY = 'yQ8aY6SLKe9B6hzeT5yIwUfVoVkAeNdfKsDjnvuI';
 const CATS={'fed|fomc|powell|rate|interest':'Fed Policy','cpi|inflation|pce|ppi':'Inflasi','gold|xau|bullion|precious':'Harga Emas','dollar|usd|dxy':'USD Index','war|geopolit|conflict|ukraine|iran|israel':'Geopolitik','china|asia|yuan':'Pasar Asia','gdp|recession|growth|economy':'Ekonomi Makro','silver|copper|commodity|oil':'Komoditas'};
 const getCat=t=>{const tl=t.toLowerCase();for(const[k,v]of Object.entries(CATS))if(k.split('|').some(x=>tl.includes(x)))return v;return 'Pasar Global';};
 const getEff=t=>{const tl=t.toLowerCase();if(/rise|surge|rally|jump|gain|soar|climb/.test(tl))return 'up';if(/fall|drop|decline|slump|plunge|sink/.test(tl))return 'dn';return 'n';};
 const getImp=c=>['Fed Policy','Inflasi','Harga Emas','USD Index'].includes(c)?'h':['Geopolitik','Ekonomi Makro'].includes(c)?'m':'l';
-const KW=['gold','xau','silver','bullion','fed','fomc','rate','inflation','dollar','cpi','nfp','powell','treasury','yield','bond','economy','gdp','trade','tariff','war','china','oil','commodity','market','price'];
 
 async function loadNews(){
   const btn=document.getElementById('news-btn');
   btn.disabled=true;btn.textContent='Loading...';
-  document.getElementById('news-inner').innerHTML=`<div class="loader"><div class="spin"></div><div class="spin-txt">Mengambil berita dari RSS feeds...</div></div>`;
+  document.getElementById('news-inner').innerHTML=`<div class="loader"><div class="spin"></div><div class="spin-txt">Mengambil berita live...</div></div>`;
   try{
-    const settled=await Promise.allSettled(
-      RSS_FEEDS.map(f=>
-        fetch(`${PROXY}${encodeURIComponent(f.url)}&count=15`)
-          .then(r=>r.json())
-          .then(d=>({name:f.name,items:d.items||[]}))
-      )
-    );
-    let all=[];
-    settled.forEach(r=>{
-      if(r.status==='fulfilled'){
-        r.value.items.forEach(item=>{
-          all.push({
-            title:(item.title||'').replace(/<[^>]+>/g,'').trim(),
-            desc:(item.description||'').replace(/<[^>]+>/g,'').substring(0,200).trim(),
-            link:item.link||'#',
-            pubDate:item.pubDate||'',
-            source:r.value.name,
-          });
-        });
-      }
-    });
-    // Deduplicate
-    all=all.filter((a,i,arr)=>arr.findIndex(b=>b.title.substring(0,40)===a.title.substring(0,40))===i);
-    // Filter by keywords, fallback ke semua jika kurang dari 3
-    let filtered=all.filter(a=>KW.some(kw=>(a.title+' '+a.desc).toLowerCase().includes(kw)));
-    if(filtered.length<3) filtered=all;
-    filtered.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
-    const top=filtered.slice(0,8);
-    if(top.length===0) throw new Error('RSS tidak mengembalikan artikel, coba refresh');
+    // Coba 3 query berbeda untuk dapat lebih banyak artikel
+    const queries=['gold','federal reserve inflation','XAU commodity'];
+    const q=queries[Math.floor(Date.now()/600000)%queries.length];
+    const url=`https://api.thenewsapi.com/v1/news/all?api_token=${THENEWS_KEY}&search=${encodeURIComponent(q)}&language=en&limit=10&sort=published_at`;
+    const r=await fetch(url);
+    if(!r.ok) throw new Error(`TheNewsAPI ${r.status}`);
+    const d=await r.json();
+    if(!d.data?.length) throw new Error('Tidak ada artikel ditemukan');
 
-    const html=top.map(a=>{
-      const cat=getCat(a.title),eff=getEff(a.title),imp=getImp(cat),ago=timeSince(new Date(a.pubDate));
+    const html=d.data.slice(0,8).map(a=>{
+      const cat=getCat(a.title),eff=getEff(a.title),imp=getImp(cat),ago=timeSince(new Date(a.published_at));
       const effL=eff==='up'?'▲ Bullish':eff==='dn'?'▼ Bearish':'● Neutral';
+      const desc=(a.description||a.snippet||'').substring(0,180);
       return `<div class="nitem">
         <div class="nbar n-${imp}"></div>
         <div>
           <div class="ncat">${cat}</div>
-          <div class="ntitle"><a href="${a.link}" target="_blank" rel="noopener">${a.title}</a></div>
-          ${a.desc?`<div class="ndesc">${a.desc.substring(0,180)}…</div>`:''}
-          <div class="nsrc">📰 ${a.source}</div>
+          <div class="ntitle"><a href="${a.url}" target="_blank" rel="noopener">${a.title}</a></div>
+          ${desc?`<div class="ndesc">${desc}…</div>`:''}
+          <div class="nsrc">📰 ${a.source||'News'}</div>
           <div class="nmeta">
             <span class="ntime">⏱ ${ago}</span>
             <span class="tag t-${eff}">${effL}</span>
